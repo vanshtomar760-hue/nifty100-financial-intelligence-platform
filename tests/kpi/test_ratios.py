@@ -56,3 +56,63 @@ def test_normal_sector_roce_benchmark():
         "Technology"
     ) is False
 
+def test_debt_to_equity_normal():
+    assert calculate_debt_to_equity(500,1000) == 0.5
+
+
+def test_debt_free_company():
+    assert calculate_debt_to_equity(0,1000) == 0
+
+
+def test_high_leverage_flag():
+    assert check_high_leverage_flag(6,"Technology") is True
+
+
+def test_financial_sector_no_leverage_flag():
+    assert check_high_leverage_flag(6,"Financials") is False
+
+def test_icr_normal():
+    assert calculate_interest_coverage_ratio(200,50,50) == 5
+
+
+def test_icr_zero_interest():
+    assert calculate_interest_coverage_ratio(200,50,0) is None
+
+
+def test_icr_debt_free_label():
+    assert get_icr_label(None) == "Debt Free"
+
+
+def test_icr_warning():
+    assert check_icr_warning(1.2) is True
+
+def test_icr_normal():
+    assert calculate_interest_coverage_ratio(200,50,50) == 5
+
+
+def test_icr_zero_interest():
+    assert calculate_interest_coverage_ratio(200,50,0) is None
+
+
+def test_icr_debt_free_label():
+    assert get_icr_label(None) == "Debt Free"
+
+
+def test_icr_warning():
+    assert check_icr_warning(1.2) is True
+
+def test_net_debt_normal():
+    assert calculate_net_debt(1000,300) == 700
+
+
+def test_net_debt_no_investments():
+    assert calculate_net_debt(1000,None) == 1000
+
+
+def test_asset_turnover_normal():
+    assert calculate_asset_turnover(1000,500) == 2
+
+
+def test_asset_turnover_zero_assets():
+    assert calculate_asset_turnover(1000,0) is None
+

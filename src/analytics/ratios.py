@@ -92,3 +92,97 @@ def check_roce_benchmark(roce, sector, financial_sector_average=12, normal_thres
         return roce >= financial_sector_average
 
     return roce >= normal_threshold
+
+def calculate_debt_to_equity(borrowings, equity):
+    """
+    Debt to Equity = Borrowings / (Equity + Reserves)
+
+    Returns 0 if company has no debt
+    """
+
+    if borrowings == 0:
+        return 0
+
+    if equity is None or equity <= 0:
+        return None
+
+    return borrowings / equity
+
+
+def check_high_leverage_flag(debt_to_equity, sector):
+    """
+    High leverage if D/E > 5
+    Except Financials sector
+    """
+
+    if debt_to_equity is None:
+        return False
+
+    if sector == "Financials":
+        return False
+
+    return debt_to_equity > 5
+
+def calculate_interest_coverage_ratio(operating_profit, other_income, interest):
+    """
+    ICR = (Operating Profit + Other Income) / Interest
+
+    Returns None if interest = 0
+    """
+
+    if interest == 0:
+        return None
+
+    return (operating_profit + other_income) / interest
+
+
+
+def get_icr_label(icr):
+    """
+    Add display label for debt-free companies
+    """
+
+    if icr is None:
+        return "Debt Free"
+
+    return None
+
+
+
+def check_icr_warning(icr):
+    """
+    Warning if ICR < 1.5
+    """
+
+    if icr is None:
+        return False
+
+    return icr < 1.5
+def calculate_net_debt(borrowings, investments):
+    """
+    Net Debt = Borrowings - Investments
+
+    Investments treated as liquid asset proxy
+    """
+
+    if borrowings is None:
+        return None
+
+    if investments is None:
+        investments = 0
+
+    return borrowings - investments
+
+
+
+def calculate_asset_turnover(sales, total_assets):
+    """
+    Asset Turnover = Sales / Total Assets
+
+    Returns None if total_assets = 0
+    """
+
+    if total_assets == 0 or total_assets is None:
+        return None
+
+    return sales / total_assets
