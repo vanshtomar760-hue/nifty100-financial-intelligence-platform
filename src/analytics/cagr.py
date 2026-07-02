@@ -5,6 +5,8 @@ def calculate_cagr(start, end, years):
     Formula:
     CAGR = ((End / Start) ** (1 / Years) - 1) * 100
     """
+    if start is None or end is None:
+       return None, "INSUFFICIENT"
 
     if years <= 0:
         return None
@@ -53,23 +55,18 @@ def calculate_metric_cagr(values, years):
     """
     Calculate CAGR for a metric history.
 
-    Parameters:
-        values : list
-            Ordered from oldest to newest.
-
-        years : int
-            CAGR period (3, 5, or 10)
-
-    Returns:
-        (cagr_value, flag)
+    values should be ordered oldest -> newest
     """
 
-    # Need at least (years + 1) values
     if len(values) <= years:
         return None, "INSUFFICIENT"
 
     start = values[-(years + 1)]
     end = values[-1]
+
+    # Missing values
+    if start is None or end is None:
+        return None, "INSUFFICIENT"
 
     return calculate_cagr_with_flag(start, end, years)
 
