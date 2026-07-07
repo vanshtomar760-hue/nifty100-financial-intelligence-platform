@@ -3,7 +3,7 @@ import pandas as pd
 import yaml
 
 
-def run_screener():
+def run_screener(custom_filters=None):
 
     # -------------------------------
     # Load configuration
@@ -12,10 +12,16 @@ def run_screener():
     with open("config/screener_config.yaml", "r") as file:
         config = yaml.safe_load(file)
 
+        # Override YAML filters with preset filters
+        filters = config["filters"].copy()
+
+        if custom_filters:
+            filters.update(custom_filters)
+
     print("=" * 60)
-    print("SCREENER CONFIG")
+    print("ACTIVE FILTERS")
     print("=" * 60)
-    print(config)
+    print(filters)
 
     # -------------------------------
     # Connect Database
@@ -111,124 +117,150 @@ def run_screener():
         sectors,
         on="company_id",
         how="left"
+        )
+# -------------------------------
+# Keep Latest Year Only
+# -------------------------------
+
+    df["year_num"] = (
+        df["year"]
+        .str.extract(r"(\d{4})")[0]
+        .fillna(0)
+        .astype(int)
     )
 
+    df = df.sort_values(
+        ["company_id", "year_num"]
+    )
+
+    df = df.drop_duplicates(
+        subset="company_id",
+        keep="last"
+    )
+
+    print("=" * 60)
+    print("LATEST COMPANY DATA")
+    print("=" * 60)
+    print("Rows:", len(df))
     # -------------------------------
     # ROE Filter
     # -------------------------------
 
-    print("\nRows before ROE filter:", len(df))
 
-    df = df[
-        df["return_on_equity_pct"]
-        >= config["filters"]["roe_min"]
-    ]
+    if filters["roe_min"] is not None:
 
-    print("Rows after ROE filter :", len(df))
+        print("\nRows before ROE filter:", len(df))
 
-    # -------------------------------
-    # Debt-to-Equity Filter
-    # -------------------------------
+        df = df[
+        df["return_on_equity_pct"] >= filters["roe_min"]
+        ]
 
-    print("\nRows before D/E filter:", len(df))
+        print("Rows after ROE filter :", len(df))
 
-    financial_mask = (
-        df["broad_sector"] == "Financials"
-    )
-
-    df = df[
-        financial_mask |
-        (
-            df["debt_to_equity"]
-            <= config["filters"]["debt_to_equity_max"]
-        )
-    ]
-
-    print("Rows after D/E filter :", len(df))
 
     # -------------------------------
-    # Free Cash Flow
-    # -------------------------------
+# Debt-to-Equity Filter
+# -------------------------------
 
-    print("\nRows before FCF filter:", len(df))
+    if filters["debt_to_equity_max"] is not None:
 
-    df = df[
+        print("\nRows before D/E filter:", len(df))
+
+        # Skip Financials only when D/E limit is greater than 0
+        if filters["debt_to_equity_max"] > 0:
+
+            financial_mask = (
+                df["broad_sector"] == "Financials"
+            )
+
+            df = df[
+                financial_mask |
+                (
+                    df["debt_to_equity"]
+                    <= filters["debt_to_equity_max"]
+                )
+            ]
+
+        else:
+
+            df = df[
+                df["debt_to_equity"]
+                <= filters["debt_to_equity_max"]
+            ]
+
+        print("Rows after D/E filter :", len(df))
+
+
+
+
+    if filters["free_cash_flow_min"] is not None:
+
+        print("\nRows before FCF filter:", len(df))
+
+        df = df[
         df["free_cash_flow_cr"]
-        >= config["filters"]["free_cash_flow_min"]
-    ]
+        >= filters["free_cash_flow_min"]
+        ]
 
-    print("Rows after FCF filter :", len(df))
+        print("Rows after FCF filter :", len(df))
 
-    # -------------------------------
-    # Remaining Filters
-    # -------------------------------
+    print("\nStart Remaining Filters:", len(df))
 
-    df = df[
-        df["revenue_cagr_5yr"]
-        >= config["filters"]["revenue_cagr_5yr_min"]
-    ]
+    if filters["revenue_cagr_5yr_min"] is not None:
+        df =df[df["revenue_cagr_5yr"] >= filters["revenue_cagr_5yr_min"]]
+        print("After Revenue CAGR:", len(df))
 
-    df = df[
-        df["pat_cagr_5yr"]
-        >= config["filters"]["pat_cagr_5yr_min"]
-    ]
+    if filters["pat_cagr_5yr_min"] is not None:
+        df = df[df["pat_cagr_5yr"] >= filters["pat_cagr_5yr_min"]]
+        print("After PAT CAGR:", len(df))
 
-    df = df[
-        df["operating_profit_margin_pct"]
-        >= config["filters"]["opm_min"]
-    ]
+    if filters["opm_min"] is not None:
+        df = df[df["operating_profit_margin_pct"] >= filters["opm_min"]]
+        print("After OPM:", len(df))
 
-    df = df[
-        df["pe_ratio"]
-        <= config["filters"]["pe_max"]
-    ]
+    if filters["pe_max"] is not None:
+        df = df[df["pe_ratio"] <= filters["pe_max"]]
+        print("After PE:", len(df))
 
-    df = df[
-        df["pb_ratio"]
-        <= config["filters"]["pb_max"]
-    ]
+    if filters["pb_max"] is not None:
+        df = df[df["pb_ratio"] <= filters["pb_max"]]
+        print("After PB:", len(df))
 
-    df = df[
-        df["dividend_yield_pct"]
-        >= config["filters"]["dividend_yield_min"]
-    ]
+    if filters["dividend_yield_min"] is not None:
+        df = df[df["dividend_yield_pct"] >= filters["dividend_yield_min"]]
+        print("After Dividend Yield:", len(df))
 
-    icr_limit = config["filters"]["interest_coverage_min"]
+    if filters.get("dividend_payout_ratio_max") is not None:
+        df = df[df["dividend_payout_ratio_pct"] <= filters["dividend_payout_ratio_max"]]
+        print("After Dividend Payout:", len(df))
 
-    df = df[
-        (
-            df["interest_coverage"] >= icr_limit
-        )
-        |
-        (
-            df["interest_coverage"].isna()
-        )
-    ]
+    if filters["interest_coverage_min"] is not None:
+        icr_limit = filters["interest_coverage_min"]
+        df = df[
+        (df["interest_coverage"] >= icr_limit)
+        | (df["interest_coverage"].isna())
+        ]
+        print("After ICR:", len(df))
 
-    df = df[
-        df["market_cap_crore"]
-        >= config["filters"]["market_cap_min"]
-    ]
+    if filters["market_cap_min"] is not None:
+        df = df[df["market_cap_crore"] >= filters["market_cap_min"]]
+        print("After Market Cap:", len(df))
 
-    df = df[
-        df["net_profit"]
-        >= config["filters"]["net_profit_min"]
-    ]
+    if filters["net_profit_min"] is not None:
+        df = df[df["net_profit"] >= filters["net_profit_min"]]
+        print("After Net Profit:", len(df))
 
-    df = df[
-        df["eps_cagr_5yr"]
-        >= config["filters"]["eps_cagr_5yr_min"]
-    ]
+    if filters["eps_cagr_5yr_min"] is not None:
+        df = df[df["eps_cagr_5yr"] >= filters["eps_cagr_5yr_min"]]
+        print("After EPS CAGR:", len(df))
 
-    df = df[
-        df["asset_turnover"]
-        >= config["filters"]["asset_turnover_min"]
-    ]
+    if filters["asset_turnover_min"] is not None:
+        df = df[df["asset_turnover"] >= filters["asset_turnover_min"]]
+        print("After Asset Turnover:", len(df))
 
-    df = df[
-        df["sales"]
-        >= config["filters"]["sales_min"]
-    ]
+    if filters["sales_min"] is not None:
+        df = df[df["sales"] >= filters["sales_min"]]
+        print("After Sales:", len(df))
 
     # -------------------------------
     # Remove duplicate rows
@@ -236,7 +268,7 @@ def run_screener():
 
     df = df.drop_duplicates(
         subset=["company_id", "year"]
-    )
+        )
 
     # -------------------------------
     # Sort by Composite Score
@@ -245,7 +277,10 @@ def run_screener():
     df = df.sort_values(
         by="composite_quality_score",
         ascending=False
-    )
+        )
+
+    print("\nRows before return:", len(df))
+    print(df.head())
 
     conn.close()
 
@@ -254,27 +289,42 @@ def run_screener():
 
 if __name__ == "__main__":
 
-    result = run_screener()
+    from src.screener.presets import (
+        QUALITY_COMPOUNDER,
+        VALUE_PICK,
+        GROWTH_ACCELERATOR,
+        DIVIDEND_CHAMPION,
+        DEBT_FREE_BLUE_CHIP,
+        TURNAROUND_WATCH,
+        )
 
-    print("\n" + "=" * 60)
-    print("FINAL SCREENER RESULT")
-    print("=" * 60)
+    presets = {
+        "QUALITY COMPOUNDER": QUALITY_COMPOUNDER,
+        "VALUE PICK": VALUE_PICK,
+        "GROWTH ACCELERATOR": GROWTH_ACCELERATOR,
+        "DIVIDEND CHAMPION": DIVIDEND_CHAMPION,
+        "DEBT FREE BLUE CHIP": DEBT_FREE_BLUE_CHIP,
+        "TURNAROUND WATCH": TURNAROUND_WATCH,
+        }
 
-    print("Companies Found:", len(result))
+    for name, preset in presets.items():
 
-    print()
+        print("\n" + "=" * 70)
+        print(name)
+        print("=" * 70)
 
-    print(
-        result[
-            [
-                "company_id",
-                "year",
-                "return_on_equity_pct",
-                "debt_to_equity",
-                "free_cash_flow_cr",
-                "revenue_cagr_5yr",
-                "pat_cagr_5yr",
-                "composite_quality_score"
-            ]
-        ].head(30)
-    )
+        result = run_screener(preset)
+
+        print(f"Companies Found: {len(result)}")
+
+        print(
+            result[
+                [
+                    "company_id",
+                    "year",
+                    "return_on_equity_pct",
+                    "debt_to_equity",
+                    "composite_quality_score",
+                ]
+            ].head(10)
+            )
