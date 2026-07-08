@@ -1,7 +1,8 @@
 import sqlite3
 import pandas as pd
 import yaml
-
+from src.screener.export import export_screeners
+from src.screener.scoring import sector_relative_score
 
 def run_screener(custom_filters=None):
 
@@ -118,6 +119,8 @@ def run_screener(custom_filters=None):
         on="company_id",
         how="left"
         )
+    
+    
 # -------------------------------
 # Keep Latest Year Only
 # -------------------------------
@@ -130,7 +133,8 @@ def run_screener(custom_filters=None):
     )
 
     df = df.sort_values(
-        ["company_id", "year_num"]
+        by="year_num",
+        ascending=True
     )
 
     df = df.drop_duplicates(
@@ -189,8 +193,6 @@ def run_screener(custom_filters=None):
             ]
 
         print("Rows after D/E filter :", len(df))
-
-
 
 
     if filters["free_cash_flow_min"] is not None:
@@ -275,12 +277,11 @@ def run_screener(custom_filters=None):
     # -------------------------------
 
     df = df.sort_values(
-        by="composite_quality_score",
-        ascending=False
-        )
+    by="composite_quality_score",
+    ascending=False
+    )
 
-    print("\nRows before return:", len(df))
-    print(df.head())
+    df = sector_relative_score(df)
 
     conn.close()
 
@@ -306,25 +307,29 @@ if __name__ == "__main__":
         "DEBT FREE BLUE CHIP": DEBT_FREE_BLUE_CHIP,
         "TURNAROUND WATCH": TURNAROUND_WATCH,
         }
+    
+    all_results = {}
 
     for name, preset in presets.items():
 
-        print("\n" + "=" * 70)
-        print(name)
-        print("=" * 70)
-
         result = run_screener(preset)
 
-        print(f"Companies Found: {len(result)}")
+    all_results[name] = result
 
-        print(
-            result[
-                [
-                    "company_id",
-                    "year",
-                    "return_on_equity_pct",
-                    "debt_to_equity",
-                    "composite_quality_score",
-                ]
-            ].head(10)
-            )
+    print(f"Companies Found: {len(result)}")
+
+    print(
+        result[
+            [
+                "company_id",
+                "year",
+                "return_on_equity_pct",
+                "debt_to_equity",
+                "composite_quality_score",
+                "sector_quality_score",
+            ]
+        ].head(10)
+    )
+
+# Export once
+export_screeners(all_results)
