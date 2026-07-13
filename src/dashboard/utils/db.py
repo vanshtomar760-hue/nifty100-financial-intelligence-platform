@@ -117,3 +117,26 @@ def get_valuation(ticker):
         """,
         [ticker]
     )
+
+@st.cache_data(ttl=600)
+def get_market_cap():
+
+    return run_query(
+        "SELECT * FROM market_cap"
+    )
+
+
+@st.cache_data(ttl=600)
+def get_company_details():
+
+    return run_query(
+        "SELECT * FROM companies"
+    )
+
+
+@st.cache_data(ttl=600)
+def get_pros_cons():
+
+    return run_query(
+        "SELECT * FROM prosandcons"
+    )
