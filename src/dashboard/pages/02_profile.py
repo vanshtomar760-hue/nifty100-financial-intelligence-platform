@@ -33,9 +33,15 @@ sector = get_sectors()
 
 pros = get_pros_cons()
 
-company = companies[
+company_data = companies[
     companies["id"] == ticker
-].iloc[0]
+]
+
+if company_data.empty:
+    st.warning("Ticker not found — please try another.")
+    st.stop()
+
+company = company_data.iloc[0]
 
 sector_info = sector[
     sector["company_id"] == ticker
@@ -61,6 +67,10 @@ with col2:
     )
 
 st.write(company["about_company"])
+
+if ratios.empty:
+    st.warning("Financial data not available for this company.")
+    st.stop()
 
 latest = ratios.iloc[-1]
 
@@ -100,18 +110,22 @@ c6.metric(
 st.markdown("---")
 st.subheader("Revenue & Net Profit (10 Years)")
 
-fig = px.bar(
-    pl,
-    x="year",
-    y=["sales", "net_profit"],
-    barmode="group",
-    title="Revenue vs Net Profit"
-)
+if not pl.empty:
 
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
+    fig = px.bar(
+        pl,
+        x="year",
+        y=["sales", "net_profit"],
+        barmode="group",
+        title="Revenue vs Net Profit"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+else:
+    st.info("Revenue and Net Profit data not available.")
 
 st.markdown("---")
 st.subheader("ROE vs ROCE")
@@ -125,21 +139,25 @@ chart = ratios.merge(
     how="left"
 )
 
-fig = px.line(
-    chart,
-    x="year",
-    y=[
-        "return_on_equity_pct",
-        "roce_percentage"
-    ],
-    markers=True,
-    title="ROE vs ROCE"
-)
+if not chart.empty:
 
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
+    fig = px.line(
+        chart,
+        x="year",
+        y=[
+            "return_on_equity_pct",
+            "roce_percentage"
+        ],
+        markers=True,
+        title="ROE vs ROCE"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+else:
+    st.info("ROE / ROCE history not available.")
 
 st.markdown("---")
 st.subheader("Pros & Cons")

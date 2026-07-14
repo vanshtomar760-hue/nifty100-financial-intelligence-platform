@@ -140,3 +140,10 @@ def get_pros_cons():
     return run_query(
         "SELECT * FROM prosandcons"
     )
+
+@st.cache_data(ttl=600)
+def get_peer_percentiles():
+
+    return run_query(
+        "SELECT * FROM peer_percentiles"
+    )

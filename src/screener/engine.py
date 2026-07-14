@@ -1,8 +1,12 @@
 import sqlite3
 import pandas as pd
 import yaml
-from src.screener.export import export_screeners
-from src.screener.scoring import sector_relative_score
+try:
+    from screener.export import export_screeners
+    from screener.scoring import sector_relative_score
+except ImportError:
+    from src.screener.export import export_screeners
+    from src.screener.scoring import sector_relative_score
 
 def run_screener(custom_filters=None):
 
@@ -290,13 +294,23 @@ def run_screener(custom_filters=None):
 
 if __name__ == "__main__":
 
-    from src.screener.presets import (
-        QUALITY_COMPOUNDER,
-        VALUE_PICK,
-        GROWTH_ACCELERATOR,
-        DIVIDEND_CHAMPION,
-        DEBT_FREE_BLUE_CHIP,
-        TURNAROUND_WATCH,
+    try:
+        from screener.presets import (
+            QUALITY_COMPOUNDER,
+            VALUE_PICK,
+            GROWTH_ACCELERATOR,
+            DIVIDEND_CHAMPION,
+            DEBT_FREE_BLUE_CHIP,
+            TURNAROUND_WATCH,
+        )
+    except ImportError:
+        from src.screener.presets import (
+            QUALITY_COMPOUNDER,
+            VALUE_PICK,
+            GROWTH_ACCELERATOR,
+            DIVIDEND_CHAMPION,
+            DEBT_FREE_BLUE_CHIP,
+            TURNAROUND_WATCH,
         )
 
     presets = {
@@ -306,30 +320,29 @@ if __name__ == "__main__":
         "DIVIDEND CHAMPION": DIVIDEND_CHAMPION,
         "DEBT FREE BLUE CHIP": DEBT_FREE_BLUE_CHIP,
         "TURNAROUND WATCH": TURNAROUND_WATCH,
-        }
-    
+    }
+
     all_results = {}
 
     for name, preset in presets.items():
 
         result = run_screener(preset)
 
-    all_results[name] = result
+        all_results[name] = result
 
-    print(f"Companies Found: {len(result)}")
+        print(f"Companies Found: {len(result)}")
 
-    print(
-        result[
-            [
-                "company_id",
-                "year",
-                "return_on_equity_pct",
-                "debt_to_equity",
-                "composite_quality_score",
-                "sector_quality_score",
-            ]
-        ].head(10)
-    )
+        print(
+            result[
+                [
+                    "company_id",
+                    "year",
+                    "return_on_equity_pct",
+                    "debt_to_equity",
+                    "composite_quality_score",
+                    "sector_quality_score",
+                ]
+            ].head(10)
+        )
 
-# Export once
-export_screeners(all_results)
+    export_screeners(all_results)
