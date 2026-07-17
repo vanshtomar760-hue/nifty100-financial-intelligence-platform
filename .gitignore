@@ -5,3 +5,4 @@ __pycache__/
 *.db
 output/*.csv
 data/raw/
+*.mp4
