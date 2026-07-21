@@ -51,3 +51,4 @@ for _, row in reports.iterrows():
         )
 
     st.divider()
+
