@@ -163,3 +163,25 @@ def generate_capital_allocation_csv(records, output_file="output/capital_allocat
 
         for row in records:
             writer.writerow(row)
+
+def calculate_fcf_cagr(fcf_values):
+    """
+    Calculate 5-year CAGR of Free Cash Flow.
+
+    Returns None if CAGR cannot be computed.
+    """
+
+    if len(fcf_values) < 2:
+        return None
+
+    start = fcf_values[0]
+    end = fcf_values[-1]
+
+    if start <= 0 or end <= 0:
+        return None
+
+    years = len(fcf_values) - 1
+
+    cagr = ((end / start) ** (1 / years) - 1) * 100
+
+    return round(cagr, 2)
