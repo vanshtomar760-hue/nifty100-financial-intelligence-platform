@@ -8,7 +8,8 @@ from cashflow_kpis import (
     calculate_capex_intensity,
     calculate_fcf_conversion_rate,
     calculate_fcf_cagr,
-    classify_capital_allocation
+    classify_capital_allocation,
+    generate_capital_allocation_csv
 )
 
 print("=" * 60)
@@ -55,7 +56,10 @@ os.makedirs("output", exist_ok=True)
 results = []
 distress_alerts = []
 
-company_list = sorted(cashflow["company_id"].unique())
+company_list = sorted(
+    financial_ratios["company_id"].unique()
+)
+print("Companies to process:", len(company_list))
 
 def latest(df):
     return df.sort_values("year").iloc[-1]
@@ -63,6 +67,8 @@ def latest(df):
 
 def last_five(df):
     return df.sort_values("year").tail(5)
+
+capital_allocation_records = []
 
 for company in company_list:
 
@@ -164,12 +170,42 @@ for company in company_list:
     # -----------------------------
     # Capital Allocation
     # -----------------------------
-    _, _, _, capital_label = classify_capital_allocation(
-        latest_cf["operating_activity"],
-        latest_cf["investing_activity"],
-        latest_cf["financing_activity"],
-        cfo_label
-    )
+    
+    # ---------------------------------
+# Capital Allocation (All Years)
+# ---------------------------------
+
+    for _, cf_row in cf.iterrows():
+
+        year = cf_row["year"]
+
+        pnl_year = pnl[pnl["year"] == year]
+
+        if pnl_year.empty:
+         continue
+
+        cfo = cf_row["operating_activity"]
+        cfi = cf_row["investing_activity"]
+        cff = cf_row["financing_activity"]
+
+        cfo_sign, cfi_sign, cff_sign, pattern = classify_capital_allocation(
+            cfo,
+            cfi,
+            cff,
+            cfo_label
+        )
+
+        capital_allocation_records.append({
+            "company_id": company,
+            "year": year,
+            "cfo_sign": cfo_sign,
+            "cfi_sign": cfi_sign,
+            "cff_sign": cff_sign,
+            "pattern_label": pattern
+        })
+
+    # Latest year label for cashflow_intelligence.xlsx
+    capital_label = capital_allocation_records[-1]["pattern_label"]
 
     # -----------------------------
     # Sector
@@ -179,6 +215,7 @@ for company in company_list:
     # -----------------------------
     # Store Results
     # -----------------------------
+    print(company)
     results.append({
         "company_id": company,
         "sector": sector,
@@ -214,6 +251,80 @@ distress_df.to_csv(
     "output/distress_alerts.csv",
     index=False
 )
+generate_capital_allocation_csv(capital_allocation_records)
+
+# ==========================================================
+# Capital Allocation Distribution Summary
+# ==========================================================
+
+capital_df = pd.DataFrame(capital_allocation_records)
+
+latest_year = capital_df["year"].max()
+
+latest_patterns = capital_df[
+    capital_df["year"] == latest_year
+]
+
+summary = (
+    latest_patterns["pattern_label"]
+    .value_counts()
+    .reset_index()
+)
+
+summary.columns = [
+    "capital_allocation_pattern",
+    "company_count"
+]
+
+summary.to_csv(
+    "output/capital_allocation_summary.csv",
+    index=False
+)
+
+print("\nCapital Allocation Summary")
+print(summary)
+
+
+# ==========================================================
+# Pattern Changes Report
+# ==========================================================
+
+pattern_changes = []
+
+for company in capital_df["company_id"].unique():
+
+    company_df = (
+        capital_df[
+            capital_df["company_id"] == company
+        ]
+        .sort_values("year")
+    )
+
+    if len(company_df) < 2:
+        continue
+
+    previous = company_df.iloc[-2]
+    latest = company_df.iloc[-1]
+
+    if previous["pattern_label"] != latest["pattern_label"]:
+
+        pattern_changes.append({
+            "company_id": company,
+            "previous_year": previous["year"],
+            "latest_year": latest["year"],
+            "previous_pattern": previous["pattern_label"],
+            "latest_pattern": latest["pattern_label"]
+        })
+
+pattern_changes_df = pd.DataFrame(pattern_changes)
+
+pattern_changes_df.to_csv(
+    "output/pattern_changes.csv",
+    index=False
+)
+
+print(f"\nPattern Changes : {len(pattern_changes_df)}")
+
 
 print("\n" + "=" * 60)
 print("Cash Flow Intelligence Complete")
