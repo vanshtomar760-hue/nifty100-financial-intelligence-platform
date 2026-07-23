@@ -28,7 +28,7 @@ from reportlab.platypus import (
 
 DB_PATH = "db/nifty100.db"
 
-OUTPUT_DIR = "output/tearsheets"
+OUTPUT_DIR = "reports/tearsheets"
 
 PROS_CONS_FILE = "output/pros_cons_generated.csv"
 
@@ -56,6 +56,24 @@ normal_style = styles["BodyText"]
 
 
 class TearsheetGenerator:
+
+    def fmt(self, value, digits=2):
+
+        if value is None:
+            return "N/A"
+
+        try:
+            import pandas as pd
+
+            if pd.isna(value):
+                return "N/A"
+        except:
+            pass
+
+        try:
+            return round(float(value), digits)
+        except:
+            return "N/A"
 
     def __init__(self):
 
@@ -356,32 +374,32 @@ class TearsheetGenerator:
 
             self.create_kpi_tile(
                 "Book Value",
-                round(latest_ratio.get("book_value_per_share",0),2)
+                self.fmt(latest_ratio.get("book_value_per_share",0))
             ),
 
             self.create_kpi_tile(
                 "ROE",
-                round(latest_ratio.get("return_on_equity_pct",0),2)
+                self.fmt(latest_ratio.get("return_on_equity_pct",0))
             ),
 
             self.create_kpi_tile(
                 "Interest Coverage",
-                round(latest_ratio.get("interest_coverage",0),2)
+                self.fmt(latest_ratio.get("interest_coverage",0))
             ),
 
             self.create_kpi_tile(
                 "Debt/Equity",
-                round(latest_ratio.get("debt_to_equity",0),2)
+                self.fmt(latest_ratio.get("debt_to_equity",0))
             ),
 
             self.create_kpi_tile(
                 "Revenue CAGR",
-                round(latest_ratio.get("revenue_cagr_5yr",0),2)
+                self.fmt(latest_ratio.get("revenue_cagr_5yr",0))
             ),
 
             self.create_kpi_tile(
                 "PAT CAGR",
-                round(latest_ratio.get("pat_cagr_5yr",0),2)
+                self.fmt(latest_ratio.get("pat_cagr_5yr",0))
             )
 
         ]
